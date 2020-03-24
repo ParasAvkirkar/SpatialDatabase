@@ -1,0 +1,18 @@
+db2 -tf "C:\Users\Paras\Documents\TheoryOfDatabase\homework3\import_zip.sql"
+
+C:\Program Files\IBM\SQLLIB\BIN
+
+
+C:\Users\Paras\Documents\TheoryOfDatabase\homework3\
+
+
+!db2se register_spatial_column cse532 -tableSchema cse532 -tableName facility -columnName Geolocation -srsName nad83_srs_1
+
+!db2se register_spatial_column sample -tableName facility -columnName Geolocation -srsName nad83_srs_1
+
+
+db2 load from "C:\Users\Paras\Documents\TheoryOfDatabase\homework3\Health_Facility_General_Information.csv" of del MESSAGES load.msg INSERT INTO cse532.facilityoriginal
+
+db2 load from "C:\Users\Paras\Documents\TheoryOfDatabase\homework3\Health_Facility_Certification_Information.csv" of del MESSAGES load.msg INSERT INTO cse532.facilitycertification
+
+db2 -tf "C:\Users\Paras\Documents\TheoryOfDatabase\homework3\
