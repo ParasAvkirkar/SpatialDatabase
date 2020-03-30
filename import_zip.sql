@@ -4,8 +4,8 @@ DROP TABLE cse532.uszip;
 
 !erase zip.msg;
  
-!db2se import_shape sample
--fileName         C:\Users\Paras\Documents\TheoryOfDatabase\homework3\tl_2019_us_zcta510\tl_2019_us_zcta510.shp
+!db2se import_shape cse532
+-fileName         C:\Users\Paras\Documents\TheoryOfDatabase\homework3\SpatialDatabase\tl_2019_us_zcta510\tl_2019_us_zcta510.shp
 -srsName          nad83_srs_1
 -tableSchema      cse532
 -tableName        uszip
@@ -14,11 +14,11 @@ DROP TABLE cse532.uszip;
 -messagesFile     zip.msg
 ;
  
-!db2se register_spatial_column sample
+!db2se register_spatial_column cse532
 -tableSchema      cse532
 -tableName        uszip
 -columnName       shape
 -srsName          nad83_srs_1
 ;
  
- -- describe table cse532.uszip;
+ describe table cse532.uszip;

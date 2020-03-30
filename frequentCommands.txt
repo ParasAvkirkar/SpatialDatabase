@@ -3,7 +3,7 @@ db2 -tf "C:\Users\Paras\Documents\TheoryOfDatabase\homework3\import_zip.sql"
 C:\Program Files\IBM\SQLLIB\BIN
 
 
-C:\Users\Paras\Documents\TheoryOfDatabase\homework3\
+
 
 
 !db2se register_spatial_column cse532 -tableSchema cse532 -tableName facility -columnName Geolocation -srsName nad83_srs_1
@@ -15,4 +15,19 @@ db2 load from "C:\Users\Paras\Documents\TheoryOfDatabase\homework3\Health_Facili
 
 db2 load from "C:\Users\Paras\Documents\TheoryOfDatabase\homework3\Health_Facility_Certification_Information.csv" of del MESSAGES load.msg INSERT INTO cse532.facilitycertification
 
-db2 -tf "C:\Users\Paras\Documents\TheoryOfDatabase\homework3\
+db2 -tf "C:\Users\Paras\Documents\TheoryOfDatabase\homework3\SpatialDatabase
+
+
+Also each facility has only one entry regarding Emergency Department inside FacilityCertification table
+Those entries can have 0 or non-zero MeasureValue
+
+noerzips.sql
+Two types of FacilityCertification entries,
+	For a facility does not have Emergency Department entry
+	For a facility may have Emergency Department entry with MeasureValue set as 0
+
+ 33144
+facilities 3831
+
+db2 -td@ -f "C:\Users\Paras\Documents\TheoryOfDatabase\homework3\SpatialDatabase\mergezip.sql"
+
