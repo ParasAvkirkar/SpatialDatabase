@@ -22,18 +22,41 @@ ON usz.ZCTA5CE10 = zcwsne.zip_code
 WHERE zcwsne.zip_code IS NULL;
 
 
-WITH zip_codes_with_polygons (zip_code, location, polygon, facility_id) AS (
-    SELECT f.ZIPCODE, f.GEOLOCATION, DB2GSE.ST_Buffer(f.GEOLOCATION, 10, 'STATUTE MILE'), f.FACILITYID
-    FROM CSE532.FACILITY f
-),
-zip_code_self_neighbors_er (zip_code) AS (
-    SELECT DISTINCT source.zip_code
-    FROM zip_codes_with_polygons source INNER JOIN zip_codes_with_polygons neighbors
-    ON DB2GSE.ST_INTERSECTS(neighbors.location, source.polygon)
-    INNER JOIN CSE532.FACILITYCERTIFICATION c
-    ON neighbors.facility_id = c.FACILITYID AND c.ATTRIBUTEVALUE = 'Emergency Department'
+WITH facility_shapes (all_digit_zip, facility_id, shape) AS (
+    SELECT f.ZIPCODE, f.FACILITYID, usz.SHAPE
+    FROM CSE532.FACILITY f INNER JOIN CSE532.USZIP usz
+    ON SUBSTR(f.ZIPCODE, 1, 5) = usz.ZCTA5CE10
+), er_zipcodes (all_digit_zip) AS (
+    SELECT DISTINCT src.all_digit_zip
+    FROM facility_shapes src INNER JOIN facility_shapes neighbor
+    ON DB2GSE.ST_INTERSECTS(src.shape, neighbor.shape) = 1
+    INNER JOIN CSE532.FACILITYCERTIFICATION fac
+    ON neighbor.facility_id = fac.FACILITYID AND fac.ATTRIBUTEVALUE = 'Emergency Department'
 )
-SELECT i.ZIPCODE
-FROM CSE532.FACILITY i LEFT JOIN zip_code_self_neighbors_er j
-ON i.ZIPCODE = j.zip_code
-WHERE j.zip_code IS NULL;
+SELECT COUNT(DISTINCT SUBSTR(i.ZIPCODE, 1, 5))
+FROM CSE532.FACILITY i LEFT JOIN er_zipcodes e ON i.ZIPCODE = e.all_digit_zip
+WHERE e.all_digit_zip IS NULL;
+
+
+WITH facility_shapes (all_digit_zip, facility_id, shape) AS (
+    SELECT f.ZIPCODE, f.FACILITYID, usz.SHAPE
+    FROM CSE532.FACILITY f INNER JOIN CSE532.USZIP usz
+    ON SUBSTR(f.ZIPCODE, 1, 5) = usz.ZCTA5CE10
+), non_er_zipcodes(zip_code) AS (
+    SELECT DISTINCT f.ZIPCODE
+    FROM CSE532.FACILITY f
+    WHERE f.ZIPCODE NOT IN (
+        SELECT DISTINCT p.ZIPCODE
+        FROM CSE532.FACILITY p INNER JOIN CSE532.FACILITYCERTIFICATION q
+        ON p.FACILITYID = q.FACILITYID AND q.ATTRIBUTEVALUE = 'Emergency Department'
+    )
+), er_zipcodes (all_digit_zip) AS (
+    SELECT DISTINCT src.all_digit_zip
+    FROM facility_shapes src INNER JOIN facility_shapes neighbor
+    ON DB2GSE.ST_INTERSECTS(src.shape, neighbor.shape) = 1
+    INNER JOIN CSE532.FACILITYCERTIFICATION fac
+    ON neighbor.facility_id = fac.FACILITYID AND fac.ATTRIBUTEVALUE = 'Emergency Department'
+)
+SELECT DISTINCT SUBSTR(i.zip_code, 1, 5)
+FROM non_er_zipcodes i LEFT JOIN er_zipcodes e ON i.zip_code = e.all_digit_zip
+WHERE e.all_digit_zip IS NULL;

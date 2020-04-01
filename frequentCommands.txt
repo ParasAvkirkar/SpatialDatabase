@@ -31,3 +31,60 @@ facilities 3831
 
 db2 -td@ -f "C:\Users\Paras\Documents\TheoryOfDatabase\homework3\SpatialDatabase\mergezip.sql"
 
+------------------------------------------------
+
+there are two zip-codes in facility related tables who don't have corresponding shapes available in usz
+also there are some rows in facility table having POINT_EMPTY row
+
+
+SELECT COUNT(DISTINCT SUBSTR(f.ZIPCODE, 1, 5))
+FROM CSE532.FACILITY f INNER JOIN CSE532.FACILITYCERTIFICATION fac
+ON f.FACILITYID = fac.FACILITYID AND fac.ATTRIBUTEVALUE = 'Emergency Department'
+INNER JOIN CSE532.USZIP usz
+ON usz.ZCTA5CE10 = SUBSTR(f.ZIPCODE, 1, 5);
+
+
+SELECT COUNT(DISTINCT SUBSTR(f.ZIPCODE, 1, 5))
+FROM CSE532.FACILITY f INNER JOIN CSE532.FACILITYCERTIFICATION fac
+ON f.FACILITYID = fac.FACILITYID AND fac.ATTRIBUTEVALUE = 'Emergency Department';
+
+SELECT DISTINCT SUBSTR(f.ZIPCODE, 1, 5)
+FROM CSE532.FACILITY f INNER JOIN CSE532.FACILITYCERTIFICATION fac
+ON f.FACILITYID = fac.FACILITYID AND fac.ATTRIBUTEVALUE = 'Emergency Department'
+LEFT JOIN CSE532.USZIP usz
+ON SUBSTR(f.ZIPCODE, 1, 5) = usz.ZCTA5CE10
+WHERE usz.ZCTA5CE10 IS NULL;
+
+------------------------------------------------
+FACILITY facility-id (cannot create index on this because its' a primary key)
+FACILITYCERTIFICATION facility-id, attribute-value
+FACILITY GEOLOCATION
+USZIP ZCTA5CE10
+USZIP SHAPE
+
+
+in microseconds
+before indexing
+nearester 864000
+noerzips 3926000
+
+after indexing
+nearester 450000
+noerzips 4242000
+
+------------------------------------------------
+
+steps to mergezip.sql
+
+avg = calculate average population
+maintain neighboring zip-codes
+iterate on zip-codes
+fetch zip-codes 
+tables of zip-code relationship, component id
+component id, total-population, 
+
+
+db2 -td@ -f "C:\Users\Paras\Documents\TheoryOfDatabase\homework3\SpatialDatabase\mergezip.sql"
+
+most important command
+CREATE USER TEMPORARY TABLESPACE USERTEMPDATA MANAGED BY AUTOMATIC STORAGE;
