@@ -83,8 +83,27 @@ fetch zip-codes
 tables of zip-code relationship, component id
 component id, total-population, 
 
+iterate on zip-codes,
+for each zip-code z
+	check if z is not member-node
+		check all neighbors of z and see if any of them are not fulfilling
+			add z to someone to fulfill
+		else
+			make z root node
+
+iterate on zip-codes, (use cursor)
+for each zip-code z
+	check if z is not member-node (select query)
+		check all neighbors of z and see if any of them are not fulfilling (select query)
+			add z to someone to fulfill (insert in neighbor table, insert in )
+		else
+			make z root node
+
+
 
 db2 -td@ -f "C:\Users\Paras\Documents\TheoryOfDatabase\homework3\SpatialDatabase\mergezip.sql"
+
+db2 -tvmf "C:\Users\Paras\Documents\TheoryOfDatabase\homework3\SpatialDatabase\mergezip.sql"
 
 most important command
 CREATE USER TEMPORARY TABLESPACE USERTEMPDATA MANAGED BY AUTOMATIC STORAGE;
