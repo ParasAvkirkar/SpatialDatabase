@@ -95,9 +95,9 @@ iterate on zip-codes, (use cursor)
 for each zip-code z
 	check if z is not member-node (select query)
 		check all neighbors of z and see if any of them are not fulfilling (select query)
-			add z to someone to fulfill (insert in neighbor table, insert in )
+			add z to someone to fulfill (insert in member table, update population in component table)
 		else
-			make z root node
+			make z root node (add self relationship in member_zip table)
 
 
 
@@ -114,3 +114,6 @@ execute takes at-least 10 minutes
 
 most important command
 CREATE USER TEMPORARY TABLESPACE USERTEMPDATA MANAGED BY AUTOMATIC STORAGE;
+
+
+command for unlimited time-interval: db2 UPDATE CLI CFG FOR SECTION COMMON USING QUERYTIMEOUTINTERVAL 0

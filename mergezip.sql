@@ -34,7 +34,6 @@
 -- FROM zip_population_shape src INNER JOIN zip_population_shape neighbor
 -- ON DB2GSE.ST_INTERSECTS(src.shape, neighbor.shape) = 1;
 
-
 CREATE OR REPLACE PROCEDURE CSE532.MERGE_ZIPCODE (OUT output NUMERIC(15,5))
 	LANGUAGE SQL MODIFIES SQL DATA
 	BEGIN
@@ -45,45 +44,73 @@ CREATE OR REPLACE PROCEDURE CSE532.MERGE_ZIPCODE (OUT output NUMERIC(15,5))
 
 		DECLARE curr_avg_population DOUBLE DEFAULT 0;
 
-		DECLARE v_zip_code VARCHAR(20);
-		DECLARE v_population BIGINT;
-		DECLARE v_neighbor_zip_code VARCHAR(20);
-
 		DECLARE running_component_id INT DEFAULT 1;
 
-		DECLARE CONTINUE HANDLER FOR NOT FOUND SET at_end = 1;
+		DECLARE CONTINUE HANDLER FOR NOT FOUND SET at_end = 10;
 
 
-		FOR v_row AS SELECT zip_code, population FROM CSE532.zip_code_details DO
-			-- SET count = count + 1;
+		SELECT AVG(population) INTO curr_avg_population FROM CSE532.zip_code_details;
+
+		FOR v_row AS (SELECT zip_code, population FROM CSE532.zip_code_details WHERE zip_code = '11790') DO
 
 			IF NOT EXISTS (SELECT * FROM CSE532.zip_member_table WHERE member_zip = v_row.zip_code) THEN
-				SET count = count + 2;
+				-- SET count = count + 2;
+				BEGIN
+					DECLARE neighbor_counts BIGINT DEFAULT 0;
+
+					DECLARE v_component_id INT;
+					DECLARE v_zip_code VARCHAR(20);
+					DECLARE v_population BIGINT;
+
+					DECLARE neighbor_cursor CURSOR FOR SELECT mct.component_id, mct.parent_zip, mct.population
+						FROM CSE532.zip_code_neighbors zcn
+						INNER JOIN CSE532.zip_member_table zmt ON zcn.src_zip_code = v_row.zip_code
+						AND zmt.member_zip = zcn.neighbor_zip_code
+						INNER JOIN CSE532.merge_component_table mct ON zmt.component_id = mct.component_id
+						AND mct.population < curr_avg_population
+						ORDER BY mct.population LIMIT 1;
+
+					OPEN neighbor_cursor;					
+					FETCH neighbor_cursor INTO v_component_id, v_zip_code, v_population;
+					IF v_population IS NOT NULL THEN
+						INSERT INTO CSE532.zip_member_table(parent_zip, member_zip, component_id) 
+							VALUES(v_zip_code, v_row.zip_code, v_component_id);
+
+						UPDATE CSE532.merge_component_table SET population = v_population + v_row.population
+							WHERE component_id = v_component_id;
+					ELSE
+						INSERT INTO CSE532.merge_component_table(component_id, parent_zip, population) 
+							VALUES(running_component_id, v_row.zip_code, v_row.population);
+
+						INSERT INTO CSE532.zip_member_table(parent_zip, member_zip, component_id) 
+							VALUES(v_row.zip_code, v_row.zip_code, running_component_id);
+
+						SET running_component_id = running_component_id + 1;
+						SET count = count + 1;
+					END IF;
+
+					CLOSE neighbor_cursor;
+
+					-- SET count = at_end;
+
+				END;
+
 			END IF;
-
-			-- BEGIN
-			-- 	DECLARE zip_code_cursor CURSOR FOR SELECT ZCTA5CE10 FROM CSE532.USZIP WHERE ZCTA5CE10 = '43451';
-			-- 	SET at_end = 0;
-			-- 	OPEN zip_code_cursor;
-			-- 	FETCH zip_code_cursor INTO zip_code;
-			-- 	WHILE (at_end = 0) DO
-			-- 		SET count = count + 1000;
-			-- 		FETCH zip_code_cursor INTO zip_code;
-			-- 	END WHILE;
-
-			-- 	CLOSE zip_code_cursor;
-			-- END;
 
 		END FOR;
 
 		
 
-    	SET output = count;
+    	SET output = curr_avg_population;
 
 	END@
 
 
 CALL CSE532.MERGE_ZIPCODE(?)@
+
+SELECT *
+FROM CSE532.merge_component_table
+WHERE population < 9475.0@
 
 -- DROP TABLE CSE532.zip_code_details@
 
