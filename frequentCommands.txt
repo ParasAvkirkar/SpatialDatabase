@@ -105,5 +105,12 @@ db2 -td@ -f "C:\Users\Paras\Documents\TheoryOfDatabase\homework3\SpatialDatabase
 
 db2 -tvmf "C:\Users\Paras\Documents\TheoryOfDatabase\homework3\SpatialDatabase\mergezip.sql"
 
+USZIP cross-join: 215532 rows
+execute takes at-least 10 minutes
+1 row takes 100 ms to insert
+
+2s to insert 1000 rows
+
+
 most important command
 CREATE USER TEMPORARY TABLESPACE USERTEMPDATA MANAGED BY AUTOMATIC STORAGE;
