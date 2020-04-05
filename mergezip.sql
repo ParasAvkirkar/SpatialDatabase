@@ -39,67 +39,81 @@ CREATE OR REPLACE PROCEDURE CSE532.MERGE_ZIPCODE (OUT output NUMERIC(15,5))
 	BEGIN
 		
 		DECLARE count INT DEFAULT 0;
-		DECLARE rows_fetched INT DEFAULT 0;
+		DECLARE rows_to_process INT DEFAULT 0;
 		DECLARE at_end INT DEFAULT 0;
 
 		DECLARE curr_avg_population DOUBLE DEFAULT 0;
 
 		DECLARE running_component_id INT DEFAULT 1;
 
-		DECLARE CONTINUE HANDLER FOR NOT FOUND SET at_end = 10;
-
+		DECLARE CONTINUE HANDLER FOR NOT FOUND SET at_end = 1;
 
 		SELECT AVG(population) INTO curr_avg_population FROM CSE532.zip_code_details;
 
-		FOR v_row AS (SELECT zip_code, population FROM CSE532.zip_code_details WHERE zip_code = '11790') DO
+		-- outer loop begin clause
+		BEGIN
+			DECLARE curr_zip_code VARCHAR(20);
+			DECLARE curr_population BIGINT;
+			DECLARE is_exit INT;
 
-			IF NOT EXISTS (SELECT * FROM CSE532.zip_member_table WHERE member_zip = v_row.zip_code) THEN
-				-- SET count = count + 2;
-				BEGIN
-					DECLARE neighbor_counts BIGINT DEFAULT 0;
+			DECLARE zip_code_process_cursor CURSOR WITH HOLD FOR SELECT zip_code, population FROM CSE532.zip_code_details;
 
-					DECLARE v_component_id INT;
-					DECLARE v_zip_code VARCHAR(20);
-					DECLARE v_population BIGINT;
+			OPEN zip_code_process_cursor;
+			
+			SELECT COUNT(*) INTO rows_to_process FROM CSE532.zip_code_details;
 
-					DECLARE neighbor_cursor CURSOR FOR SELECT mct.component_id, mct.parent_zip, mct.population
-						FROM CSE532.zip_code_neighbors zcn
-						INNER JOIN CSE532.zip_member_table zmt ON zcn.src_zip_code = v_row.zip_code
-						AND zmt.member_zip = zcn.neighbor_zip_code
-						INNER JOIN CSE532.merge_component_table mct ON zmt.component_id = mct.component_id
-						AND mct.population < curr_avg_population
-						ORDER BY mct.population LIMIT 1;
+			WHILE count < rows_to_process DO
+				FETCH zip_code_process_cursor INTO curr_zip_code, curr_population;
+				IF NOT EXISTS (SELECT * FROM CSE532.zip_member_table WHERE member_zip = curr_zip_code) THEN
+					-- if this zip-code is not process yet (begin clause)
+					
+					BEGIN
+						DECLARE v_component_id INT;
+						DECLARE v_zip_code VARCHAR(20);
+						DECLARE v_population BIGINT;
 
-					OPEN neighbor_cursor;					
-					FETCH neighbor_cursor INTO v_component_id, v_zip_code, v_population;
-					IF v_population IS NOT NULL THEN
-						INSERT INTO CSE532.zip_member_table(parent_zip, member_zip, component_id) 
-							VALUES(v_zip_code, v_row.zip_code, v_component_id);
+						DECLARE neighbor_cursor CURSOR FOR SELECT mct.component_id, mct.parent_zip, mct.population
+							FROM CSE532.zip_code_neighbors zcn
+							INNER JOIN CSE532.zip_member_table zmt ON zcn.src_zip_code = curr_zip_code
+							AND zmt.member_zip = zcn.neighbor_zip_code
+							INNER JOIN CSE532.merge_component_table mct ON zmt.component_id = mct.component_id
+							AND mct.population < curr_avg_population
+							ORDER BY mct.population LIMIT 1;
 
-						UPDATE CSE532.merge_component_table SET population = v_population + v_row.population
-							WHERE component_id = v_component_id;
-					ELSE
-						INSERT INTO CSE532.merge_component_table(component_id, parent_zip, population) 
-							VALUES(running_component_id, v_row.zip_code, v_row.population);
+						OPEN neighbor_cursor;					
+						FETCH neighbor_cursor INTO v_component_id, v_zip_code, v_population;
+						IF v_population IS NOT NULL THEN
+							INSERT INTO CSE532.zip_member_table(parent_zip, member_zip, component_id) 
+								VALUES(v_zip_code, curr_zip_code, v_component_id);
 
-						INSERT INTO CSE532.zip_member_table(parent_zip, member_zip, component_id) 
-							VALUES(v_row.zip_code, v_row.zip_code, running_component_id);
+							UPDATE CSE532.merge_component_table SET population = v_population + curr_population
+								WHERE component_id = v_component_id;
+						ELSE
+							INSERT INTO CSE532.merge_component_table(component_id, parent_zip, population) 
+								VALUES(running_component_id, curr_zip_code, curr_population);
 
-						SET running_component_id = running_component_id + 1;
-						SET count = count + 1;
-					END IF;
+							INSERT INTO CSE532.zip_member_table(parent_zip, member_zip, component_id) 
+								VALUES(curr_zip_code, curr_zip_code, running_component_id);
 
-					CLOSE neighbor_cursor;
+							SET running_component_id = running_component_id + 1;
+						END IF;
 
-					-- SET count = at_end;
+						CLOSE neighbor_cursor;
+					END;
 
-				END;
+				-- ending if-else of zip-code part of zip_member_table
+				END IF;
+				
 
-			END IF;
+				SET count = count + 1;
+				UPDATE CSE532.process_track_table SET zipcode_process = count;
 
-		END FOR;
+				COMMIT WORK;
+			END WHILE;
+			CLOSE zip_code_process_cursor;
 
-		
+		-- second begin-end clause
+		END;
 
     	SET output = curr_avg_population;
 

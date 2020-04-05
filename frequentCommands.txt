@@ -117,3 +117,12 @@ CREATE USER TEMPORARY TABLESPACE USERTEMPDATA MANAGED BY AUTOMATIC STORAGE;
 
 
 command for unlimited time-interval: db2 UPDATE CLI CFG FOR SECTION COMMON USING QUERYTIMEOUTINTERVAL 0
+
+facilityinsert.sql
+createfacilititycertificationtable.sql
+createindexes.sql
+
+nearester.sql -> result file (location and distance result)
+noerzips.sql -> result file
+show time difference with/without indexes
+
