@@ -1,38 +1,12 @@
--- CREATE TABLE CSE532.zip_code_details (
--- 	zip_code VARCHAR(20),
--- 	population BIGINT,
--- 	shape DB2GSE.ST_MULTIPOLYGON
--- )@
+CREATE TABLE CSE532.zip_code_details AS (WITH zip_pop(zip_code, population) AS (
+    SELECT z.ZIP, MAX(z.ZPOP)
+    FROM CSE532.ZIPPOP z
+    GROUP BY z.ZIP
+)
+SELECT usz.ZCTA5CE10 AS zip_code, zp.population AS population, usz.SHAPE AS shape
+FROM CSE532.USZIP usz INNER JOIN zip_pop zp
+ON CAST(usz.ZCTA5CE10 AS INT) = zp.zip_code AND zp.population > 0) WITH DATA@
 
--- CREATE TABLE CSE532.zip_code_neighbors (
--- 	src_zip_code VARCHAR(20),
--- 	neighbor_zip_code VARCHAR(20)
--- )@
-
-
--- INSERT INTO CSE532.zip_code_details(zip_code, population, shape)  WITH zip_pop(zip_code, population) AS (
---     SELECT z.ZIP, MAX(z.ZPOP)
---     FROM CSE532.ZIPPOP z
---     GROUP BY z.ZIP
--- )
--- SELECT usz.ZCTA5CE10, zp.population, usz.SHAPE
--- FROM CSE532.USZIP usz INNER JOIN zip_pop zp
--- ON CAST(usz.ZCTA5CE10 AS INT) = zp.zip_code AND zp.population > 0;
---     @
-
--- INSERT INTO CSE532.zip_code_neighbors(src_zip_code, src_population, neighbor_zip_code, neighbor_population)
--- WITH zip_pop(zip_code, population) AS (
---     SELECT z.ZIP, MAX(z.ZPOP)
---     FROM CSE532.ZIPPOP z
---     GROUP BY z.ZIP
--- ), zip_population_shape(zip_code, population, shape) AS (
---     SELECT usz.ZCTA5CE10, zp.population, usz.SHAPE
---     FROM CSE532.USZIP usz INNER JOIN zip_pop zp
---     ON CAST(usz.ZCTA5CE10 AS INT) = zp.zip_code AND zp.population > 0
--- )
--- SELECT src.zip_code, src.population, neighbor.zip_code, neighbor.population
--- FROM zip_population_shape src INNER JOIN zip_population_shape neighbor
--- ON DB2GSE.ST_INTERSECTS(src.shape, neighbor.shape) = 1;
 
 INSERT INTO CSE532.merge_component_table(parent_zip, population)
 SELECT zcd.zip_code, zcd.population
@@ -74,10 +48,12 @@ CREATE OR REPLACE PROCEDURE CSE532.MERGE_ZIPCODE (OUT output NUMERIC(15,5))
 						DECLARE is_neighbor_found INT DEFAULT 0;
 
 						FOR v2 AS c2 CURSOR WITH HOLD FOR
-						SELECT mct.parent_zip AS neighbor_parent, mct.population AS neighbor_population
-							FROM CSE532.zip_code_neighbors zcn
-							INNER JOIN CSE532.zip_member_table zmt ON zcn.src_zip_code = curr_zip_code
-							AND zmt.member_zip = zcn.neighbor_zip_code
+							SELECT mct.parent_zip AS neighbor_parent, mct.population AS neighbor_population
+							FROM CSE532.USZIP src INNER JOIN CSE532.USZIP neighbor 
+								ON src.ZCTA5CE10 = curr_zip_code AND
+									DB2GSE.ST_Intersects(src.SHAPE, neighbor.SHAPE) = 1 AND src.ZCTA5CE10 != neighbor.ZCTA5CE10
+							INNER JOIN CSE532.zip_member_table zmt
+								ON zmt.member_zip = neighbor.ZCTA5CE10
 							INNER JOIN CSE532.merge_component_table mct ON zmt.parent_zip = mct.parent_zip
 							ORDER BY mct.population LIMIT 1
 						DO
@@ -122,6 +98,4 @@ SELECT *
 FROM CSE532.merge_component_table
 WHERE population < 9475.0@
 
--- DROP TABLE CSE532.zip_code_details@
-
--- DROP TABLE CSE532.zip_code_neighbors@
+DROP TABLE CSE532.zip_code_details@
